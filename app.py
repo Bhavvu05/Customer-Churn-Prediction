@@ -16,7 +16,7 @@ BASE_DIR = Path(__file__).parent
 MODEL_PATH = BASE_DIR / "model" / "churn_pipeline.joblib"
 
 DATASET_PATH = (
-    BASE_DIR / "data" / "customer_churn_classification_50k.csv"
+    BASE_DIR / "data" / "customer_churn_cleaned.csv"
 )
 
 # Load trained model
