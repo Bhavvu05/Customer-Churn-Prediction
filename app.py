@@ -210,6 +210,113 @@ if uploaded_file is not None:
             # Keep required features in training order
             data = data[expected_columns]
 
+            validation_rules = {
+                "age": (18, 80),
+                "credit_score": (300, 850),
+                "income": (0, None),
+                "satisfaction_score": (1, 10)
+            }
+
+            errors = []
+
+            for column, (minimum, maximum) in validation_rules.items():
+
+                values = pd.to_numeric(data[column], errors="coerce")
+
+                 # Check non-numeric values
+                invalid_format = data[column].notna() & values.isna()
+
+                if invalid_format.any():
+                    errors.append(f"{column}: Please enter numeric values.")
+
+                # Check allowed range
+                invalid_range = values.notna() & (values < minimum)
+
+                if maximum is not None:
+                    invalid_range = invalid_range | (
+                        values.notna() & (values > maximum)
+                    )
+
+                if invalid_range.any():
+                    errors.append(
+                        f"{column}: Allowed values are "
+                        f"{minimum} to {maximum if maximum is not None else 'above'}."
+                    )
+
+                # Convert valid numeric strings into numbers
+                data[column] = values
+
+            if errors:
+                for error in errors:
+                    st.error(error)
+
+                st.stop()
+
+
+            # -------------------------------
+            # 2. CATEGORICAL VALIDATION
+            # -------------------------------
+
+            categorical_columns = [
+                "gender",
+                "geography",
+                "account_type",
+                "education",
+                "employment",
+                "marital_status"
+            ]
+
+            categorical_errors = False
+
+            for column in categorical_columns:
+
+                # Get allowed categories from cleaned training data
+                valid_categories = (
+                    training_data[column].dropna().astype(str).unique()
+                )
+
+                # Create case-insensitive lookup
+                category_lookup = {
+                    category.strip().casefold(): category
+                    for category in valid_categories
+                }
+
+                # Normalize capitalization and extra spaces
+                normalized_values = data[column].apply(
+                    lambda value: (
+                        value if pd.isna(value)
+                        else category_lookup.get(
+                            str(value).strip().casefold(), value
+                        )
+                    )
+                )
+
+                # Check unsupported categories
+                invalid_values = (
+                    data[column].notna()
+                    & ~data[column].astype(str).str.strip().str.casefold().isin(
+                        category_lookup
+                    )
+                )
+
+                if invalid_values.any():
+                    categorical_errors = True
+
+                    invalid_categories = data.loc[
+                        invalid_values, column
+                    ].unique()
+
+                    st.error(
+                        f"{column}: Invalid categories "
+                        f"{list(invalid_categories)}. "
+                        f"Allowed values: {list(valid_categories)}"
+                    )
+
+                data[column] = normalized_values
+
+            if categorical_errors:
+                st.stop()
+
             st.success("CSV uploaded successfully!")
 
             st.subheader("Uploaded Customer Data")
